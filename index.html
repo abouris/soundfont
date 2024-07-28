@@ -1,0 +1,640 @@
+<html><head><base href="https://websim.ai/app/soundfont-keyboard"/><title>SoundFont Keyboard</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #FF69B4, #9370DB, #4B0082);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  select, button, input {
+    margin: 5px;
+    padding: 10px 15px;
+    font-size: 14px;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  select:hover, button:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  #instrument-select {
+    width: 200px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+    background-repeat: no-repeat;
+    background-position-x: 95%;
+    background-position-y: 50%;
+  }
+  #instrument-select option {
+    background-color: #2a2a2a;
+    color: #fff;
+  }
+  #current-instrument, #transpose-value, #cents-value {
+    margin-top: 10px;
+    font-style: italic;
+  }
+  .transpose-controls, .cents-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .transpose-controls button, .cents-controls button {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    font-size: 18px;
+    line-height: 1;
+  }
+  #transpose-value, #cents-value {
+    margin: 0 10px;
+    width: 60px;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  #keyboard {
+    display: flex;
+    justify-content: center;
+    background: linear-gradient(to bottom, #4a4a4a, #2a2a2a);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+  .key {
+    width: 40px;
+    height: 150px;
+    background-color: #f0f0f0;
+    border: 1px solid #000;
+    margin: 0 2px;
+    cursor: pointer;
+    border-radius: 0 0 5px 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.1s ease;
+    position: relative;
+  }
+  .key.black {
+    width: 30px;
+    height: 100px;
+    background-color: #000;
+    margin-left: -15px;
+    margin-right: -15px;
+    z-index: 1;
+  }
+  .key:active, .key.active {
+    background-color: #ddd;
+  }
+  .key.black:active, .key.black.active {
+    background-color: #333;
+  }
+  .key::before {
+    content: attr(data-key);
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #888;
+  }
+  .key::after {
+    content: attr(data-note);
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #888;
+  }
+  .key.black::before, .key.black::after {
+    color: #ddd;
+  }
+  #loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 20;
+  }
+  #chord-pads {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 600px;
+    margin-top: 20px;
+  }
+  .chord-pad {
+    width: 60px;
+    height: 60px;
+    margin: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+  }
+  .chord-pad:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  .chord-pad:active {
+    transform: scale(0.95);
+  }
+  #keyboard-controls {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    max-width: 600px;
+    text-align: center;
+  }
+  #debug-log {
+    display: none;
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    max-width: 600px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+  }
+  #toggle-debug {
+    margin-top: 10px;
+  }
+  .key-square {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    border: 1px solid #fff;
+    margin: 0 5px;
+  }
+  #credits {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    text-align: center;
+  }
+  .credit-link {
+    color: #3498db;
+    text-decoration: none;
+    margin: 0 5px;
+  }
+  .credit-link:hover {
+    text-decoration: underline;
+  }
+  .octave-toggle {
+    margin-top: 10px;
+  }
+</style>
+<script type="text/javascript" nonce="3ef5692b142a4420908a6375302" src="//local.adguard.org?ts=1720691028772&amp;type=content-script&amp;dmn=websim.ai&amp;url=https%3A%2F%2Fwebsim.ai%2Fapi%2Fhtml%3Fpayload%3D%257B%2522id%2522%253A%2522n2BVdZNjn7hfzqhNW%2522%252C%2522debug%2522%253A%2522true%2522%252C%2522raw%2522%253A%2522true%2522%257D&amp;app=com.google.Chrome&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script>
+<script type="text/javascript" nonce="3ef5692b142a4420908a6375302" src="//local.adguard.org?ts=1720691028772&amp;name=AdGuard%20Assistant&amp;name=AdGuard%20Extra&amp;type=user-script"></script></head>
+<body>
+  <h1>SoundFont Keyboard</h1>
+  <div class="container">
+    <div class="controls">
+      <select id="instrument-select">
+        <option value="">Select an instrument...</option>
+      </select>
+      <button id="record">Record</button>
+      <button id="play">Play</button>
+      <button id="stop">Stop</button>
+      <div class="transpose-controls">
+        <label>Transpose</label>
+        <div>
+          <button id="transpose-down">-</button>
+          <input type="text" id="transpose-value" value="0" readonly>
+          <button id="transpose-up">+</button>
+        </div>
+      </div>
+      <div class="cents-controls">
+        <label>Fine Tune</label>
+        <div>
+          <button id="cents-down">-</button>
+          <input type="text" id="cents-value" value="0" readonly>
+          <button id="cents-up">+</button>
+        </div>
+      </div>
+    </div>
+    <div id="current-instrument"></div>
+    <div id="keyboard"></div>
+  </div>
+  <div id="chord-pads"></div>
+  <div id="keyboard-controls">
+    <h3>PC Keyboard Controls:</h3>
+    <p>Increase octave by 1: <span class="key-square">1</span></p>
+    <p>Increase octave by 2: <span class="key-square">`</span></p>
+    <div class="octave-toggle">
+      <label>
+        <input type="checkbox" id="octave-toggle-mode"> Toggle octave shift mode
+      </label>
+    </div>
+  </div>
+  <button id="toggle-debug">Toggle Debug Log</button>
+  <div id="debug-log"></div>
+  <div id="loading">Loading SoundFonts...</div>
+  <div id="credits">
+    Thank you, <a href="https://websim.ai/@quietmorning97080485" class="credit-link">Quiet Morning</a> and <a href="https://websim.ai/@obama" class="credit-link">Piano-Shaped Prismatic Obamiuim</a>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+  <script>
+    const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const keyMapping = {
+      'q': 'C2', '2': 'C#2', 'w': 'D2', '3': 'D#2', 'e': 'E2', 'r': 'F2', '5': 'F#2',
+      't': 'G2', '6': 'G#2', 'y': 'A2', '7': 'A#2', 'u': 'B2',
+      'i': 'C3', '9': 'C#3', 'o': 'D3', '0': 'D#3', 'p': 'E3', '[': 'F3', '=': 'F#3',
+      ']': 'G3',
+      'z': 'F3', 's': 'F#3', 'x': 'G3', 'd': 'G#3', 'c': 'A3', 'f': 'A#3', 'v': 'B3',
+      'b': 'C4', 'h': 'C#4', 'n': 'D4', 'j': 'D#4', 'm': 'E4', ',': 'F4', 'l': 'F#4',
+      '.': 'G4', ';': 'G#4', '/': 'A4'
+    };
+    const octaves = 6;
+    let currentInstrument = 'acoustic_grand_piano';
+    let soundFont;
+    let recording = false;
+    let recordedNotes = [];
+    let startTime;
+    let playbackTimeouts = [];
+    let transposeValue = 0;
+    let centsValue = 0;
+    let currentOctaveShift = 0;
+    let octaveShift1 = false;
+    let octaveShift2 = false;
+    let octaveToggleMode = false;
+
+    const pressedKeys = new Set();
+
+    const chords = {
+      'E': ['E3', 'G#3', 'B3'],
+      'A': ['A2', 'C#3', 'E3'],
+      'F': ['F2', 'A2', 'C3'],
+      'D': ['D3', 'F#3', 'A3'],
+      'G': ['G2', 'B2', 'D3'],
+      'C': ['C3', 'E3', 'G3'],
+      'B': ['B2', 'D#3', 'F#3'],
+      'Em': ['E3', 'G3', 'B3'],
+      'Am': ['A2', 'C3', 'E3'],
+      'Dm': ['D3', 'F3', 'A3'],
+      'Bm': ['B2', 'D3', 'F#3'],
+      'Cm': ['C3', 'D#3', 'G3'],
+      'Fm': ['F2', 'G#2', 'C3'],
+      'E7': ['E3', 'G#3', 'B3', 'D4'],
+      'A7': ['A2', 'C#3', 'E3', 'G3'],
+      'D7': ['D3', 'F#3', 'A3', 'C4'],
+      'G7': ['G2', 'B2', 'D3', 'F3'],
+      'C7': ['C3', 'E3', 'G3', 'A#3']
+    };
+
+    function debugLog(message) {
+      const debugElement = document.getElementById('debug-log');
+      debugElement.innerHTML += `${new Date().toISOString()} - ${message}<br>`;
+      debugElement.scrollTop = debugElement.scrollHeight;
+    }
+
+    function createKeyboard() {
+      const keyboard = document.getElementById('keyboard');
+      for (let octave = 2; octave < 2 + octaves; octave++) {
+        keys.forEach((note) => {
+          const key = document.createElement('div');
+          key.className = `key ${note.includes('#') ? 'black' : 'white'}`;
+          const fullNote = `${note}${octave}`;
+          key.dataset.note = fullNote;
+          key.dataset.key = Object.keys(keyMapping).find(k => keyMapping[k] === fullNote) || '';
+          key.addEventListener('mousedown', () => playNote(fullNote, 0, 'click'));
+          key.addEventListener('mouseup', () => releaseNote(fullNote));
+          key.addEventListener('mouseleave', () => releaseNote(fullNote));
+          keyboard.appendChild(key);
+        });
+      }
+    }
+
+    function createChordPads() {
+      const chordPads = document.getElementById('chord-pads');
+      Object.keys(chords).forEach(chordName => {
+        const pad = document.createElement('button');
+        pad.className = 'chord-pad';
+        pad.textContent =  chordName;
+        pad.addEventListener('mousedown', () => playChord(chordName));
+        pad.addEventListener('mouseup', () => releaseChord(chordName));
+        pad.addEventListener('mouseleave', () => releaseChord(chordName));
+        chordPads.appendChild(pad);
+      });
+    }
+
+    createKeyboard();
+    createChordPads();
+
+    async function loadSoundFonts() {
+      const response = await fetch('https://gleitz.github.io/midi-js-soundfonts/MusyngKite/names.json');
+      const instruments = await response.json();
+      const select = document.getElementById('instrument-select');
+      instruments.forEach(instrument => {
+        const option = document.createElement('option');
+        option.value = instrument;
+        option.textContent = instrument.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        select.appendChild(option);
+      });
+      loadSoundFont('acoustic_grand_piano');
+    }
+
+    async function loadSoundFont(instrument) {
+      document.getElementById('loading').style.display = 'block';
+      currentInstrument = instrument;
+      const response = await fetch(`https://gleitz.github.io/midi-js-soundfonts/MusyngKite/${instrument}-mp3.js`);
+      const soundFontData = await response.text();
+      eval(soundFontData);
+      soundFont = MIDI.Soundfont[instrument];
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('current-instrument').textContent = `Current Instrument: ${instrument.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+      debugLog(`Loaded instrument: ${instrument}`);
+    }
+
+    function transposeNote(note, additionalTranspose = 0) {
+      const [noteName, octave] = [note.slice(0, -1), parseInt(note.slice(-1))];
+      let noteIndex = keys.indexOf(noteName);
+      noteIndex += transposeValue + additionalTranspose + currentOctaveShift;
+
+      let newOctave = octave + Math.floor(noteIndex / 12);
+      noteIndex = (noteIndex + 12) % 12; // Ensure positive index
+
+      return `${keys[noteIndex]}${newOctave}`;
+    }
+
+    function playNote(note, additionalTranspose = 0, source = 'unknown') {
+      if (!soundFont) return;
+      
+      let transposedNote = transposeNote(note, additionalTranspose);
+      let adjustedCents = centsValue;
+
+      // If the note is a sharp, play the lower note with +100 cents
+      if (note.includes('#')) {
+        transposedNote = transposeNote(note.replace('#', ''), additionalTranspose);
+        adjustedCents += 100;
+      }
+
+      let sound = new Howl({
+        src: [soundFont[transposedNote]],
+        format: ['mp3'],
+        rate: Math.pow(2, adjustedCents / 1200) // Apply cents adjustment
+      });
+      
+      sound.play();
+      
+      if (recording) {
+        const time = Date.now() - startTime;
+        recordedNotes.push({ note: transposedNote, time, cents: adjustedCents });
+      }
+
+      // Highlight the key
+      let displayedNote = transposedNote;
+      const key = document.querySelector(`.key[data-note="${displayedNote}"]`);
+      if (key) {
+        key.classList.add('active');
+      }
+
+      debugLog(`Played note: ${note} (transposed to ${transposedNote}) | Source: ${source} | Instrument: ${currentInstrument} | Transpose: ${transposeValue} | Octave Shift: ${currentOctaveShift} | Cents: ${adjustedCents}`);
+    }
+
+    function releaseNote(note) {
+      let displayedNote = transposeNote(note);
+      const key = document.querySelector(`.key[data-note="${displayedNote}"]`);
+      if (key) {
+        key.classList.remove('active');
+      }
+    }
+
+    function releaseAllNotes() {
+      document.querySelectorAll('.key.active').forEach(key => {
+        key.classList.remove('active');
+      });
+    }
+
+    function playChord(chordName) {
+      if (!soundFont) return;
+      
+      chords[chordName].forEach(note => {
+        playNote(note, 0, 'chord');
+      });
+
+      if (recording) {
+        const time = Date.now() - startTime;
+        recordedNotes.push({ chord: chordName, time, cents: centsValue });
+      }
+
+      debugLog(`Played chord: ${chordName} | Instrument: ${currentInstrument}`);
+    }
+
+    function releaseChord(chordName) {
+      chords[chordName].forEach(note => {
+        releaseNote(note);
+      });
+    }
+
+    function startRecording() {
+      recording = true;
+      recordedNotes = [];
+      startTime = Date.now();
+      document.getElementById('record').textContent = 'Stop Recording';
+      debugLog('Started recording');
+    }
+
+    function stopRecording() {
+      recording = false;
+      document.getElementById('record').textContent = 'Record';
+      debugLog('Stopped recording');
+    }
+
+    function playRecording() {
+      if (recordedNotes.length === 0) return;
+      stopPlayback(); // Stop any ongoing playback
+      const playbackStartTime = Date.now();
+      recordedNotes.forEach(({ note, chord, time, cents }) => {
+        const timeout = setTimeout(() => {
+          if (note) {
+            playNote(note, 0, 'playback');
+            setTimeout(() => releaseNote(note), 200);
+          } else if (chord) {
+            playChord(chord);
+            setTimeout(() => releaseChord(chord), 200);
+          }
+        }, time);
+        playbackTimeouts.push(timeout);
+      });
+      debugLog('Started playback');
+    }
+
+    function stopPlayback() {
+      playbackTimeouts.forEach(timeout => clearTimeout(timeout));
+      playbackTimeouts = [];
+      Howler.stop();
+      releaseAllNotes();
+      debugLog('Stopped playback');
+    }
+
+    function updateTransposeDisplay() {
+      const transposeInput = document.getElementById('transpose-value');
+      transposeInput.value = transposeValue >= 0 ? `+${transposeValue}` : transposeValue;
+    }
+
+    function updateCentsDisplay() {
+      const centsInput = document.getElementById('cents-value');
+      centsInput.value = centsValue >= 0 ? `+${centsValue}` : centsValue;
+    }
+
+    loadSoundFonts();
+
+    document.getElementById('instrument-select').addEventListener('change', (e) => loadSoundFont(e.target.value));
+    document.getElementById('record').addEventListener('click', () => {
+      if (recording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    });
+    document.getElementById('play').addEventListener('click', playRecording);
+    document.getElementById('stop').addEventListener('click', stopPlayback);
+
+    document.getElementById('transpose-down').addEventListener('click', () => {
+      transposeValue = Math.max(transposeValue - 1, -12);
+      updateTransposeDisplay();
+      releaseAllNotes();
+      debugLog(`Transpose value changed to: ${transposeValue}`);
+    });
+
+    document.getElementById('transpose-up').addEventListener('click', () => {
+      transposeValue = Math.min(transposeValue + 1, 12);
+      updateTransposeDisplay();
+      releaseAllNotes();
+      debugLog(`Transpose value changed to: ${transposeValue}`);
+    });
+
+    document.getElementById('cents-down').addEventListener('click', () => {
+      centsValue = Math.max(centsValue - 10, -100);
+      updateCentsDisplay();
+      debugLog(`Cents value changed to: ${centsValue}`);
+    });
+
+    document.getElementById('cents-up').addEventListener('click', () => {
+      centsValue = Math.min(centsValue + 10, 100);
+      updateCentsDisplay();
+      debugLog(`Cents value changed to: ${centsValue}`);
+    });
+
+    document.getElementById('octave-toggle-mode').addEventListener('change', (e) => {
+      octaveToggleMode = e.target.checked;
+      debugLog(`Octave toggle mode ${octaveToggleMode ? 'enabled' : 'disabled'}`);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      if (key === '1') {
+        if (octaveToggleMode) {
+          octaveShift1 = !octaveShift1;
+          currentOctaveShift = octaveShift1 ? 12 : 0;
+        } else if (!octaveShift1) {
+          octaveShift1 = true;
+          currentOctaveShift += 12;
+        }
+        releaseAllNotes();
+        debugLog(`Octave shift +1 ${octaveShift1 ? 'activated' : 'deactivated'}. Current shift: ${currentOctaveShift}`);
+        return;
+      }
+      if (key === '`') {
+        if (octaveToggleMode) {
+          octaveShift2 = !octaveShift2;
+          currentOctaveShift = octaveShift2 ? 24 : 0;
+        } else if (!octaveShift2) {
+          octaveShift2 = true;
+          currentOctaveShift += 24;
+        }
+        releaseAllNotes();
+        debugLog(`Octave shift +2 ${octaveShift2 ? 'activated' : 'deactivated'}. Current shift: ${currentOctaveShift}`);
+        return;
+      }
+      if (keyMapping[key] && !pressedKeys.has(key)) {
+        pressedKeys.add(key);
+        playNote(keyMapping[key], 0, 'keyboard');
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      if (key === '1' && !octaveToggleMode) {
+        octaveShift1 = false;
+        currentOctaveShift -= 12;
+        releaseAllNotes();
+        debugLog(`Octave shift +1 deactivated. Current shift: ${currentOctaveShift}`);
+        return;
+      }
+      if (key === '`' && !octaveToggleMode) {
+        octaveShift2 = false;
+        currentOctaveShift -= 24;
+        releaseAllNotes();
+        debugLog(`Octave shift +2 deactivated. Current shift: ${currentOctaveShift}`);
+        return;
+      }
+      if (keyMapping[key]) {
+        pressedKeys.delete(key);
+        releaseNote(keyMapping[key]);
+      }
+    });
+
+    document.getElementById('toggle-debug').addEventListener('click', () => {
+      const debugLog = document.getElementById('debug-log');
+      debugLog.style.display = debugLog.style.display === 'none' ? 'block' : 'none';
+    });
+
+    updateTransposeDisplay();
+    updateCentsDisplay();
+
+    document.querySelectorAll('.key').forEach(key => {
+      const note = key.dataset.note;
+      key.setAttribute('data-note', note);
+    });
+  </script>
+</body></html>
